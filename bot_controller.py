@@ -1,6 +1,6 @@
 import logging
 
-from telegram.ext import Updater, CommandHandler, MessageHandler, CallbackQueryHandler, Filters
+from telegram.ext import Updater, CommandHandler, MessageHandler, CallbackQueryHandler, Filters, CallbackContext
 from telegram import Update, Bot, InlineKeyboardMarkup, InlineKeyboardButton
 from yandex_music import Client
 from player_controller import PlayerController
@@ -14,7 +14,7 @@ proxy = {
 class BotController:
     def __init__(self, token):
         self.player_controller = PlayerController()
-        self.updater = Updater(token, request_kwargs=proxy)
+        self.updater = Updater(token, request_kwargs=proxy, use_context=True)
         self.client = Client()
         dispatcher = self.updater.dispatcher
         dispatcher.add_handler(CommandHandler("start", self._start_callback))
@@ -25,13 +25,13 @@ class BotController:
         dispatcher.add_handler(CallbackQueryHandler(self._playback_control_query, pattern='playbackControl.*'))
         dispatcher.add_handler(MessageHandler(Filters.text, self._message_callback))
 
-    def _show_playlist(self, bot: Bot, update: Update):
+    def _show_playlist(self, update: Update, context: CallbackContext):
         playlist_str = self.player_controller.format_playlist()
         chat_id = update.message.chat_id
-        bot.send_message(chat_id=chat_id,
+        context.bot.send_message(chat_id=chat_id,
                          text=playlist_str)
 
-    def _show_controls(self, bot: Bot, update: Update):
+    def _show_controls(self, update: Update, context: CallbackContext):
         button_list = [[
             InlineKeyboardButton('⏯️', callback_data='playbackControl playpause'),
             InlineKeyboardButton('⏹️', callback_data='playbackControl stop'),
@@ -43,7 +43,7 @@ class BotController:
         reply_markup = InlineKeyboardMarkup(button_list)
         chat_id = update.message.chat_id
         #TODO: remove text
-        bot.send_message(chat_id=chat_id,
+        context.bot.send_message(chat_id=chat_id,
                          text="Control board",
                          reply_markup=reply_markup)
 
@@ -58,33 +58,33 @@ class BotController:
                 break
         return url, friendly_name, track.duration_ms
 
-    def _message_callback(self, bot: Bot, update: Update):
+    def _message_callback(self, update: Update, context: CallbackContext):
         chat_id = update.message.chat_id
         data = update.message.text
         #TODO delayed url get
         track_info = self._get_track_info(data)
         logging.info("added %s", track_info)
         self.player_controller.push(track_info)
-        bot.send_message(chat_id=chat_id, text="Трек добавлен")
+        context.bot.send_message(chat_id=chat_id, text="Трек добавлен")
 
-    def _start_callback(self, bot: Bot, update: Update):
+    def _start_callback(self, update: Update, context: CallbackContext):
         update.message.reply_text('Привет!\nВыбери колонки командой /device'
                                   '\nи отправляй ссылку на трек в Яндекс.Музыке🎵')
 
-    def _select_device_callback(self, bot: Bot, update: Update):
+    def _select_device_callback(self, update: Update, context: CallbackContext):
         chat_id = update.message.chat_id
         button_list = [[InlineKeyboardButton(cc.device.friendly_name, callback_data=f'device {i}') for i, cc in enumerate(self.player_controller.chromecasts)]]
         reply_markup = InlineKeyboardMarkup(button_list)
-        bot.send_message(chat_id,
+        context.bot.send_message(chat_id,
                          text=f"Найдено {len(self.player_controller.chromecasts)} проигрывателя!\nВыберите:",
                          reply_markup=reply_markup)
 
-    def _device_query(self, bot: Bot, update: Update):
+    def _device_query(self, update: Update, context: CallbackContext):
         data = update.callback_query.data
         idx = int(data.split(' ')[1])
         self.player_controller.select(idx)
 
-    def _playback_control_query(self, bot: Bot, update: Update):
+    def _playback_control_query(self, update: Update, context: CallbackContext):
         data = update.callback_query.data
         logging.info('playback_control_query: %s', data)
         command = data.split(' ')[1]
