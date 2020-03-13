@@ -15,14 +15,37 @@ class BotController:
     def __init__(self, token):
         self.player_controller = PlayerController()
         self.updater = Updater(token, request_kwargs=proxy)
-        self.last_song_url = None
         self.client = Client()
         dispatcher = self.updater.dispatcher
         dispatcher.add_handler(CommandHandler("start", self._start_callback))
         dispatcher.add_handler(CommandHandler("device", self._select_device_callback))
+        dispatcher.add_handler(CommandHandler("control", self._show_controls))
+        dispatcher.add_handler(CommandHandler("playlist", self._show_playlist))
         dispatcher.add_handler(CallbackQueryHandler(self._device_query, pattern='device.*'))
         dispatcher.add_handler(CallbackQueryHandler(self._playback_control_query, pattern='playbackControl.*'))
         dispatcher.add_handler(MessageHandler(Filters.text, self._message_callback))
+
+    def _show_playlist(self, bot: Bot, update: Update):
+        playlist_str = self.player_controller.format_playlist()
+        chat_id = update.message.chat_id
+        bot.send_message(chat_id=chat_id,
+                         text=playlist_str)
+
+    def _show_controls(self, bot: Bot, update: Update):
+        button_list = [[
+            InlineKeyboardButton('⏯️', callback_data='playbackControl playpause'),
+            InlineKeyboardButton('⏹️', callback_data='playbackControl stop'),
+            InlineKeyboardButton('🔊', callback_data='playbackControl volume_up'),
+            InlineKeyboardButton('🔉', callback_data='playbackControl volume_down'),
+            # TODO: repeat regressed, fix
+            # InlineKeyboardButton('🔁', callback_data='playbackControl repeat')
+        ]]
+        reply_markup = InlineKeyboardMarkup(button_list)
+        chat_id = update.message.chat_id
+        #TODO: remove text
+        bot.send_message(chat_id=chat_id,
+                         text="Control board",
+                         reply_markup=reply_markup)
 
     def _get_track_info(self, track_url):
         album_id, track_id = track_url.split('/')[4:7:2]
@@ -33,25 +56,16 @@ class BotController:
             if info.codec == 'mp3':
                 url = info.get_direct_link()
                 break
-        return url, friendly_name
+        return url, friendly_name, track.duration_ms
 
     def _message_callback(self, bot: Bot, update: Update):
         chat_id = update.message.chat_id
         data = update.message.text
-        url, track_title = self._get_track_info(data)
-        button_list = [[
-            InlineKeyboardButton('⏯️', callback_data='playbackControl playpause'),
-            InlineKeyboardButton('⏹️', callback_data='playbackControl stop'),
-            InlineKeyboardButton('🔊', callback_data='playbackControl volume_up'),
-            InlineKeyboardButton('🔉', callback_data='playbackControl volume_down'),
-            InlineKeyboardButton('🔁', callback_data='playbackControl repeat')
-        ]]
-        reply_markup = InlineKeyboardMarkup(button_list)
-        bot.send_message(chat_id=chat_id,
-                         text=f"Сейчас играет — {track_title}",
-                         reply_markup=reply_markup)
-        self.player_controller.play_from_start(url)
-        self.last_song_url = data
+        #TODO delayed url get
+        track_info = self._get_track_info(data)
+        logging.info("added %s", track_info)
+        self.player_controller.push(track_info)
+        bot.send_message(chat_id=chat_id, text="Трек добавлен")
 
     def _start_callback(self, bot: Bot, update: Update):
         update.message.reply_text('Привет!\nВыбери колонки командой /device'
@@ -72,8 +86,8 @@ class BotController:
 
     def _playback_control_query(self, bot: Bot, update: Update):
         data = update.callback_query.data
+        logging.info('playback_control_query: %s', data)
         command = data.split(' ')[1]
-        logging.info('playback_control_query: ', data)
         if command == 'playpause':
             self.player_controller.playpause()
         if command == 'stop':
@@ -83,9 +97,7 @@ class BotController:
         if command == 'volume_down':
             self.player_controller.volume_down()
         if command == 'repeat':
-            assert self.last_song_url is not None
-            url, _ = self._get_track_info(self.last_song_url)
-            self.player_controller.play_from_start(url)
+            self.player_controller.repeat()
 
     def start_bot(self):
         self.updater.start_polling()

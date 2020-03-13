@@ -19,20 +19,58 @@ def _log(func):
 
 class PlayerController:
     def __init__(self):
+        #TODO: обновлять девайсы регулярно
         self.chromecasts = pychromecast.get_chromecasts()
         for cc in self.chromecasts:
             logging.debug(cc.device)
         self.selected_cast = None
+        self.queue = []
+        self.player_is_idle = None
+        self.current_url = None
+        self.current_track_duration = None
 
     def select(self, idx):
         assert 0 <= idx < len(self.chromecasts)
         self.selected_cast = self.chromecasts[idx]
+
+    def format_playlist(self):
+        return '\n'.join([t for _, t, _ in self.queue]) or "Пусто"
+
+    def new_media_status(self, status):
+        logging.debug("status_listener: %s", status)
+        prev_idle = self.player_is_idle
+        self.player_is_idle = status.player_is_idle
+        if prev_idle is None:
+            return
+        # почему-то даже при новом урле источника duration остаётся прежним
+        # и когда в начале трека прилетает статус с новым урлом в состоянии idle (баг?)
+        # duration - единственная возможность отличить то, что мы ещё не начали играть новый трек
+        # попробовать прицепиться к media_session_id?
+        if self.player_is_idle \
+                and self.current_url == status.content_id\
+                and self.current_track_duration == int(status.duration):
+            self.play_next()
+
+    def play_next(self):
+        if len(self.queue) == 0:
+            return
+        url, title, duration = self.queue.pop(0)
+        logging.info("Playing %s", title)
+        self.current_url = url
+        self.current_track_duration = duration//1000
+        self.play_from_start(url)
+
+    def push(self, track):
+        self.queue.append(track)
+        if self.player_is_idle is None:
+            self.play_next()
 
     @_log
     def play_from_start(self, url):
         self.selected_cast.wait()
         logging.debug(self.selected_cast.status)
         mc = self.selected_cast.media_controller
+        mc.register_status_listener(self)
         mc.play_media(url, 'audio/mp3')
         mc.block_until_active()
         mc.play()
@@ -57,3 +95,7 @@ class PlayerController:
     @_log
     def volume_down(self):
         self.selected_cast.volume_down()
+
+    @_log
+    def repeat(self):
+        self.play_from_start(self.current_url)
