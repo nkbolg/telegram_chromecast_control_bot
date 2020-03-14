@@ -23,14 +23,14 @@ def setup_logger():
         os.makedirs(target_dir)
 
     # create debug log file handler
-    handler = RotatingFileHandler(join(target_dir, "chromecast-bot-debug.log"), encoding='utf-8', maxBytes=1024 * 1024 * 10,
+    handler = RotatingFileHandler(join(target_dir, "chromecast-bot-debug.log"), encoding='utf-8', maxBytes=1024 * 1024 * 1,
                                   backupCount=5)
     handler.setLevel(logging.DEBUG)
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 
     # create info log file handler
-    handler = RotatingFileHandler(join(target_dir, "chromecast-bot.log"), encoding='utf-8', maxBytes=1024 * 1024 * 10,
+    handler = RotatingFileHandler(join(target_dir, "chromecast-bot.log"), encoding='utf-8', maxBytes=1024 * 1024 * 1,
                                   backupCount=5)
     handler.setLevel(logging.INFO)
     handler.setFormatter(formatter)
