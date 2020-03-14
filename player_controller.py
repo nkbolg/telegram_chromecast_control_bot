@@ -19,19 +19,23 @@ def _log(func):
 
 class PlayerController:
     def __init__(self):
-        #TODO: обновлять девайсы регулярно
-        self.chromecasts = pychromecast.get_chromecasts()
-        for cc in self.chromecasts:
-            logging.debug(cc.device)
         self.selected_cast = None
         self.queue = []
         self.player_is_idle = None
         self.current_url = None
         self.current_track_duration = None
+        self.temp_chromecasts = None
+
+    @property
+    def chromecasts(self):
+        self.temp_chromecasts = pychromecast.get_chromecasts()
+        for cc in self.temp_chromecasts:
+            logging.debug(cc.device)
+        return self.temp_chromecasts
 
     def select(self, idx):
         assert 0 <= idx < len(self.chromecasts)
-        self.selected_cast = self.chromecasts[idx]
+        self.selected_cast = self.temp_chromecasts[idx]
 
     def format_playlist(self):
         return '\n'.join([t for _, t, _ in self.queue]) or "Пусто"
@@ -46,6 +50,7 @@ class PlayerController:
         # и когда в начале трека прилетает статус с новым урлом в состоянии idle (баг?)
         # duration - единственная возможность отличить то, что мы ещё не начали играть новый трек
         # попробовать прицепиться к media_session_id?
+        # status.duration может быть None
         if self.player_is_idle \
                 and self.current_url == status.content_id\
                 and self.current_track_duration == int(status.duration):
