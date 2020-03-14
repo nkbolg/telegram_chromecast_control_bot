@@ -42,9 +42,8 @@ class BotController:
         ]]
         reply_markup = InlineKeyboardMarkup(button_list)
         chat_id = update.message.chat_id
-        #TODO: remove text
         context.bot.send_message(chat_id=chat_id,
-                         text="Control board",
+                         text="Панель управления",
                          reply_markup=reply_markup)
 
     def _get_track_info(self, track_url):
