@@ -24,18 +24,18 @@ class PlayerController:
         self.player_is_idle = None
         self.current_url = None
         self.current_track_duration = None
-        self.temp_chromecasts = None
+        self.cached_chromecasts = []
 
-    @property
-    def chromecasts(self):
-        self.temp_chromecasts = pychromecast.get_chromecasts()
-        for cc in self.temp_chromecasts:
+    def update_chromecast_list(self):
+        self.cached_chromecasts = pychromecast.get_chromecasts()
+        for cc in self.cached_chromecasts:
             logging.debug(cc.device)
-        return self.temp_chromecasts
+
+        # TODO: if self.selected_cast not in cached_chromecasts?
 
     def select(self, idx):
-        assert 0 <= idx < len(self.chromecasts)
-        self.selected_cast = self.temp_chromecasts[idx]
+        assert 0 <= idx < len(self.cached_chromecasts)
+        self.selected_cast = self.cached_chromecasts[idx]
 
     def format_playlist(self):
         return '\n'.join([t for _, t, _ in self.queue]) or "Пусто"
@@ -52,7 +52,7 @@ class PlayerController:
         # попробовать прицепиться к media_session_id?
         # status.duration может быть None
         if self.player_is_idle \
-                and self.current_url == status.content_id\
+                and self.current_url == status.content_id \
                 and self.current_track_duration == int(status.duration):
             self.play_next()
 
@@ -62,7 +62,7 @@ class PlayerController:
         url, title, duration = self.queue.pop(0)
         logging.info("Playing %s", title)
         self.current_url = url
-        self.current_track_duration = duration//1000
+        self.current_track_duration = duration // 1000
         self.play_from_start(url)
 
     def push(self, track):

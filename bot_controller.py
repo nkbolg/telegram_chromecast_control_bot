@@ -6,7 +6,7 @@ from yandex_music import Client
 from player_controller import PlayerController
 
 proxy = {
-    'proxy_url': 'socks5://127.0.0.1:9150',
+    'proxy_url': 'socks5://127.0.0.1:9050',
     'read_timeout': 26, 'connect_timeout': 27
 }
 
@@ -15,7 +15,7 @@ class BotController:
     def __init__(self, token):
         self.player_controller = PlayerController()
         self.updater = Updater(token, request_kwargs=proxy, use_context=True)
-        self.client = Client()
+        self.client = Client(fetch_account_status=False)
         dispatcher = self.updater.dispatcher
         dispatcher.add_handler(CommandHandler("start", self._start_callback))
         dispatcher.add_handler(CommandHandler("device", self._select_device_callback))
@@ -24,6 +24,12 @@ class BotController:
         dispatcher.add_handler(CallbackQueryHandler(self._device_query, pattern='device.*'))
         dispatcher.add_handler(CallbackQueryHandler(self._playback_control_query, pattern='playbackControl.*'))
         dispatcher.add_handler(MessageHandler(Filters.text, self._message_callback))
+        job_q = self.updater.job_queue
+        job_q.run_repeating(self._update_devices, 60, first=0)
+
+    def _update_devices(self, context: CallbackContext):
+        logging.debug("Updating chromecasts list")
+        self.player_controller.update_chromecast_list()
 
     def _show_playlist(self, update: Update, context: CallbackContext):
         playlist_str = self.player_controller.format_playlist()
@@ -72,10 +78,10 @@ class BotController:
 
     def _select_device_callback(self, update: Update, context: CallbackContext):
         chat_id = update.message.chat_id
-        button_list = [[InlineKeyboardButton(cc.device.friendly_name, callback_data=f'device {i}') for i, cc in enumerate(self.player_controller.chromecasts)]]
+        button_list = [[InlineKeyboardButton(cc.device.friendly_name, callback_data=f'device {i}') for i, cc in enumerate(self.player_controller.cached_chromecasts)]]
         reply_markup = InlineKeyboardMarkup(button_list)
         context.bot.send_message(chat_id,
-                         text=f"Найдено {len(self.player_controller.chromecasts)} проигрывателя!\nВыберите:",
+                         text=f"Найдено {len(self.player_controller.cached_chromecasts)} проигрывателя!\nВыберите:",
                          reply_markup=reply_markup)
 
     def _device_query(self, update: Update, context: CallbackContext):
@@ -103,3 +109,21 @@ class BotController:
 
     def idle(self):
         self.updater.idle()
+
+
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG,
+                        format='%(filename)s: '
+                               '%(levelname)s: '
+                               '%(funcName)s(): '
+                               '%(lineno)d:\t'
+                               '%(message)s')
+    class MockController:
+        def __init__(self):
+            self.client = Client()
+
+        _get_track_info = BotController._get_track_info
+    ctr = MockController()
+    info = ctr._get_track_info('https://music.yandex.com/album/4172931/track/32947997')
+    assert 'Ed Sheeran - Shape of You' == info[1]
+    pass
