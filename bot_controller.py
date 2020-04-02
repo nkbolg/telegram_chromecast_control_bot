@@ -25,7 +25,7 @@ class BotController:
         dispatcher.add_handler(CallbackQueryHandler(self._playback_control_query, pattern='playbackControl.*'))
         dispatcher.add_handler(MessageHandler(Filters.text, self._message_callback))
         job_q = self.updater.job_queue
-        job_q.run_repeating(self._update_devices, 60, first=0)
+        job_q.run_repeating(self._update_devices, 60*5, first=1)
 
     def _update_devices(self, context: CallbackContext):
         logging.debug("Updating chromecasts list")
@@ -35,7 +35,7 @@ class BotController:
         playlist_str = self.player_controller.format_playlist()
         chat_id = update.message.chat_id
         context.bot.send_message(chat_id=chat_id,
-                         text=playlist_str)
+                                 text=playlist_str)
 
     def _show_controls(self, update: Update, context: CallbackContext):
         button_list = [[
@@ -49,8 +49,8 @@ class BotController:
         reply_markup = InlineKeyboardMarkup(button_list)
         chat_id = update.message.chat_id
         context.bot.send_message(chat_id=chat_id,
-                         text="Панель управления",
-                         reply_markup=reply_markup)
+                                 text="Панель управления",
+                                 reply_markup=reply_markup)
 
     def _get_track_info(self, track_url):
         album_id, track_id = track_url.split('/')[4:7:2]
@@ -66,7 +66,7 @@ class BotController:
     def _message_callback(self, update: Update, context: CallbackContext):
         chat_id = update.message.chat_id
         data = update.message.text
-        #TODO delayed url get
+        # TODO delayed url get
         track_info = self._get_track_info(data)
         logging.info("added %s", track_info)
         self.player_controller.push(track_info)
@@ -78,11 +78,13 @@ class BotController:
 
     def _select_device_callback(self, update: Update, context: CallbackContext):
         chat_id = update.message.chat_id
-        button_list = [[InlineKeyboardButton(cc.device.friendly_name, callback_data=f'device {i}') for i, cc in enumerate(self.player_controller.cached_chromecasts)]]
+        button_list = [[InlineKeyboardButton(cc.device.friendly_name, callback_data=f'device {i}') for i, cc in
+                        enumerate(self.player_controller.cached_chromecasts)]]
         reply_markup = InlineKeyboardMarkup(button_list)
         context.bot.send_message(chat_id,
-                         text=f"Найдено {len(self.player_controller.cached_chromecasts)} проигрывателя!\nВыберите:",
-                         reply_markup=reply_markup)
+                                 text=f"Найдено {len(self.player_controller.cached_chromecasts)} проигрывателя!\n"
+                                      f"Выберите:",
+                                 reply_markup=reply_markup)
 
     def _device_query(self, update: Update, context: CallbackContext):
         data = update.callback_query.data
@@ -118,11 +120,15 @@ if __name__ == '__main__':
                                '%(funcName)s(): '
                                '%(lineno)d:\t'
                                '%(message)s')
+
+
     class MockController:
         def __init__(self):
             self.client = Client()
 
         _get_track_info = BotController._get_track_info
+
+
     ctr = MockController()
     info = ctr._get_track_info('https://music.yandex.com/album/4172931/track/32947997')
     assert 'Ed Sheeran - Shape of You' == info[1]
