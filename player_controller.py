@@ -42,6 +42,11 @@ class PlayerController:
 
     def new_media_status(self, status):
         logging.debug("status_listener: %s", status)
+
+        from pychromecast.controllers.media import MEDIA_PLAYER_STATE_UNKNOWN
+        if status.player_state == MEDIA_PLAYER_STATE_UNKNOWN:
+            return
+
         prev_idle = self.player_is_idle
         self.player_is_idle = status.player_is_idle
         if prev_idle is None:
@@ -67,7 +72,7 @@ class PlayerController:
 
     def push(self, track):
         self.queue.append(track)
-        if self.player_is_idle is None:
+        if self.player_is_idle is None or self.player_is_idle is True:
             self.play_next()
 
     @_log
