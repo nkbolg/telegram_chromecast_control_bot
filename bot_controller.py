@@ -45,6 +45,7 @@ class BotController:
             InlineKeyboardButton('🔉', callback_data='playbackControl volume_down'),
             # TODO: repeat regressed, fix
             # InlineKeyboardButton('🔁', callback_data='playbackControl repeat')
+            InlineKeyboardButton('⏭️', callback_data='playbackControl play_next'),
         ]]
         reply_markup = InlineKeyboardMarkup(button_list)
         chat_id = update.message.chat_id
@@ -105,6 +106,8 @@ class BotController:
             self.player_controller.volume_down()
         if command == 'repeat':
             self.player_controller.repeat()
+        if command == 'play_next':
+            self.player_controller.play_next()
 
     def start_bot(self):
         self.updater.start_polling()
