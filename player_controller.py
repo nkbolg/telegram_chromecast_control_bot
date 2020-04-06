@@ -64,11 +64,11 @@ class PlayerController:
     def play_next(self):
         if len(self.queue) == 0:
             return
-        url, title, duration = self.queue.pop(0)
+        get_url, title, duration = self.queue.pop(0)
         logging.info("Playing %s", title)
-        self.current_url = url
+        self.current_url = get_url()
         self.current_track_duration = duration // 1000
-        self.play_from_start(url)
+        self.play_from_start(self.current_url)
 
     def push(self, track):
         self.queue.append(track)

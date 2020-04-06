@@ -57,17 +57,17 @@ class BotController:
         album_id, track_id = track_url.split('/')[4:7:2]
         track = self.client.tracks(f"{track_id}:{album_id}")[0]
         friendly_name = f'{track.artists[0].name} - {track.title}'
-        url = None
-        for info in track.get_download_info():
-            if info.codec == 'mp3':
-                url = info.get_direct_link()
-                break
-        return url, friendly_name, track.duration_ms
+
+        def get_url():
+            for info in track.get_download_info():
+                if info.codec == 'mp3':
+                    return info.get_direct_link()
+
+        return get_url, friendly_name, track.duration_ms
 
     def _message_callback(self, update: Update, context: CallbackContext):
         chat_id = update.message.chat_id
         data = update.message.text
-        # TODO delayed url get
         track_info = self._get_track_info(data)
         logging.info("added %s", track_info)
         self.player_controller.push(track_info)
