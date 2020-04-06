@@ -41,7 +41,6 @@ class BotController:
     def _show_controls(update: Update, context: CallbackContext):
         button_list = [[
             InlineKeyboardButton('⏯️', callback_data='playbackControl playpause'),
-            InlineKeyboardButton('⏹️', callback_data='playbackControl stop'),
             InlineKeyboardButton('🔊', callback_data='playbackControl volume_up'),
             InlineKeyboardButton('🔉', callback_data='playbackControl volume_down'),
             # TODO: repeat regressed, fix
@@ -65,20 +64,20 @@ class BotController:
 
         return get_url, friendly_name, track.duration_ms
 
-    def _add_track(self, track):
-        track_info = self._get_track_info(track)
-        logging.info("added %s", track_info)
-        self.player_controller.push(track_info)
+    def _add_tracks(self, tracks):
+        tracks_info = [self._get_track_info(t) for t in tracks]
+        logging.info("added %s", tracks_info)
+        self.player_controller.push(tracks_info)
 
     def process_url(self, data):
         xs = data.split('/')
         if xs[-2] == 'track':
             track = self.client.tracks(f"{xs[6]}:{xs[4]}")[0]
-            self._add_track(track)
+            self._add_tracks([track])
         elif xs[-2] == 'playlists':
             playlist = self.client.users_playlists(xs[6], xs[4])[0]
-            for track in playlist.tracks:
-                self._add_track(track.track)
+            tracks = [t.track for t in playlist.tracks]
+            self._add_tracks(tracks)
         else:
             raise RuntimeError(f"Unparsed data: {data}")
 
@@ -114,14 +113,12 @@ class BotController:
         command = data.split(' ')[1]
         if command == 'playpause':
             self.player_controller.playpause()
-        elif command == 'stop':
-            self.player_controller.stop()
         elif command == 'volume_up':
             self.player_controller.volume_up()
         elif command == 'volume_down':
             self.player_controller.volume_down()
-        elif command == 'repeat':
-            self.player_controller.repeat()
+        # elif command == 'repeat':
+        #     self.player_controller.repeat()
         elif command == 'play_next':
             self.player_controller.play_next()
 

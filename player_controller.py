@@ -1,3 +1,5 @@
+from typing import List, Tuple
+
 import logging
 import functools
 import pychromecast
@@ -70,8 +72,8 @@ class PlayerController:
         self.current_track_duration = duration // 1000
         self.play_from_start(self.current_url)
 
-    def push(self, tracks):
-        self.music_list.append(tracks)
+    def push(self, tracks: List[Tuple]):
+        self.music_list.extend(tracks)
         if self.player_is_idle is None or self.player_is_idle is True:
             self.play_next()
 
@@ -93,10 +95,6 @@ class PlayerController:
         else:
             self.selected_cast.media_controller.play()
             logging.info('continue')
-
-    @_log
-    def stop(self):
-        self.selected_cast.media_controller.stop()
 
     @_log
     def volume_up(self):
