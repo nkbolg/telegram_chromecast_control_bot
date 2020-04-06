@@ -74,7 +74,7 @@ class BotController:
             track = self.client.tracks(f"{xs[6]}:{xs[4]}")[0]
             self._add_track(track)
         elif xs[-2] == 'playlists':
-            playlist = cl.users_playlists(xs[6], xs[4])[0]
+            playlist = self.client.users_playlists(xs[6], xs[4])[0]
             for track in playlist.tracks:
                 self._add_track(track.track)
         else:
