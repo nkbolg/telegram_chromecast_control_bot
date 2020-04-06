@@ -25,7 +25,7 @@ class BotController:
         dispatcher.add_handler(CallbackQueryHandler(self._playback_control_query, pattern='playbackControl.*'))
         dispatcher.add_handler(MessageHandler(Filters.text, self._message_callback))
         job_q = self.updater.job_queue
-        job_q.run_repeating(self._update_devices, 60*5, first=1)
+        job_q.run_repeating(self._update_devices, 60 * 5, first=1)
 
     def _update_devices(self, context: CallbackContext):
         logging.debug("Updating chromecasts list")
@@ -53,9 +53,7 @@ class BotController:
                                  text="Панель управления",
                                  reply_markup=reply_markup)
 
-    def _get_track_info(self, track_url):
-        album_id, track_id = track_url.split('/')[4:7:2]
-        track = self.client.tracks(f"{track_id}:{album_id}")[0]
+    def _get_track_info(self, track):
         friendly_name = f'{track.artists[0].name} - {track.title}'
 
         def get_url():
@@ -65,13 +63,28 @@ class BotController:
 
         return get_url, friendly_name, track.duration_ms
 
-    def _message_callback(self, update: Update, context: CallbackContext):
-        chat_id = update.message.chat_id
-        data = update.message.text
-        track_info = self._get_track_info(data)
+    def _add_track(self, track):
+        track_info = self._get_track_info(track)
         logging.info("added %s", track_info)
         self.player_controller.push(track_info)
-        context.bot.send_message(chat_id=chat_id, text="Трек добавлен")
+
+    def _process_url(self, data):
+        xs = data.split('/')
+        if xs[-2] == 'track':
+            track = self.client.tracks(f"{xs[6]}:{xs[4]}")[0]
+            self._add_track(track)
+        elif xs[-2] == 'playlists':
+            playlist = cl.users_playlists(xs[6], xs[4])[0]
+            for track in playlist.tracks:
+                self._add_track(track.track)
+        else:
+            raise RuntimeError(f"Unparsed data: {data}")
+
+    def _message_callback(self, update: Update, context: CallbackContext):
+        data = update.message.text
+
+        self._process_url(data)
+        self._show_controls(update, context)
 
     def _start_callback(self, update: Update, context: CallbackContext):
         update.message.reply_text('Привет!\nВыбери колонки командой /device'
@@ -98,15 +111,15 @@ class BotController:
         command = data.split(' ')[1]
         if command == 'playpause':
             self.player_controller.playpause()
-        if command == 'stop':
+        elif command == 'stop':
             self.player_controller.stop()
-        if command == 'volume_up':
+        elif command == 'volume_up':
             self.player_controller.volume_up()
-        if command == 'volume_down':
+        elif command == 'volume_down':
             self.player_controller.volume_down()
-        if command == 'repeat':
+        elif command == 'repeat':
             self.player_controller.repeat()
-        if command == 'play_next':
+        elif command == 'play_next':
             self.player_controller.play_next()
 
     def start_bot(self):
@@ -124,15 +137,29 @@ if __name__ == '__main__':
                                '%(lineno)d:\t'
                                '%(message)s')
 
+    cl = Client()
 
-    class MockController:
+
+    def get_playlist(cl: Client, url: str):
+        pl = cl.users_playlists(3, 'tchernov44le')
+
+        pass
+
+
+    url = 'https://music.yandex.ru/users/tchernov44le/playlists/3'
+    get_playlist(cl, url)
+    class PCMock:
+        def push(self, track_info):
+            pass
+
+    class BotControllerMock(BotController):
         def __init__(self):
+            self.player_controller = PCMock()
             self.client = Client()
 
-        _get_track_info = BotController._get_track_info
-
-
-    ctr = MockController()
-    info = ctr._get_track_info('https://music.yandex.com/album/4172931/track/32947997')
-    assert 'Ed Sheeran - Shape of You' == info[1]
+    ctr = BotControllerMock()
+    ctr._process_url('https://music.yandex.com/album/4172931/track/32947997')
+    ctr._process_url('https://music.yandex.ru/users/tchernov44le/playlists/1002')
+    # ctr._process_url('https://music.yandex.ru/users/tchernov44le/playlists/3')
+    # assert 'Ed Sheeran - Shape of You' == info[1]
     pass
