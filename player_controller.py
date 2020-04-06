@@ -1,3 +1,4 @@
+from random import shuffle
 from typing import List, Tuple
 
 import logging
@@ -71,6 +72,10 @@ class PlayerController:
         self.current_url = get_url()
         self.current_track_duration = duration // 1000
         self.play_from_start(self.current_url)
+
+    def shuffle(self):
+        logging.info("Shuffling playlist")
+        shuffle(self.music_list)
 
     def push(self, tracks: List[Tuple]):
         self.music_list.extend(tracks)
