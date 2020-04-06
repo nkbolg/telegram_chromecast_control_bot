@@ -1,8 +1,8 @@
 import logging
-
+from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import Updater, CommandHandler, MessageHandler, CallbackQueryHandler, Filters, CallbackContext
-from telegram import Update, Bot, InlineKeyboardMarkup, InlineKeyboardButton
 from yandex_music import Client
+
 from player_controller import PlayerController
 
 proxy = {
@@ -27,7 +27,7 @@ class BotController:
         job_q = self.updater.job_queue
         job_q.run_repeating(self._update_devices, 60 * 5, first=1)
 
-    def _update_devices(self, context: CallbackContext):
+    def _update_devices(self, _: CallbackContext):
         logging.debug("Updating chromecasts list")
         self.player_controller.update_chromecast_list()
 
@@ -37,7 +37,8 @@ class BotController:
         context.bot.send_message(chat_id=chat_id,
                                  text=playlist_str)
 
-    def _show_controls(self, update: Update, context: CallbackContext):
+    @staticmethod
+    def _show_controls(update: Update, context: CallbackContext):
         button_list = [[
             InlineKeyboardButton('⏯️', callback_data='playbackControl playpause'),
             InlineKeyboardButton('⏹️', callback_data='playbackControl stop'),
@@ -53,7 +54,8 @@ class BotController:
                                  text="Панель управления",
                                  reply_markup=reply_markup)
 
-    def _get_track_info(self, track):
+    @staticmethod
+    def _get_track_info(track):
         friendly_name = f'{track.artists[0].name} - {track.title}'
 
         def get_url():
@@ -68,7 +70,7 @@ class BotController:
         logging.info("added %s", track_info)
         self.player_controller.push(track_info)
 
-    def _process_url(self, data):
+    def process_url(self, data):
         xs = data.split('/')
         if xs[-2] == 'track':
             track = self.client.tracks(f"{xs[6]}:{xs[4]}")[0]
@@ -83,10 +85,11 @@ class BotController:
     def _message_callback(self, update: Update, context: CallbackContext):
         data = update.message.text
 
-        self._process_url(data)
+        self.process_url(data)
         self._show_controls(update, context)
 
-    def _start_callback(self, update: Update, context: CallbackContext):
+    @staticmethod
+    def _start_callback(update: Update, _: CallbackContext):
         update.message.reply_text('Привет!\nВыбери колонки командой /device'
                                   '\nи отправляй ссылку на трек в Яндекс.Музыке🎵')
 
@@ -100,12 +103,12 @@ class BotController:
                                       f"Выберите:",
                                  reply_markup=reply_markup)
 
-    def _device_query(self, update: Update, context: CallbackContext):
+    def _device_query(self, update: Update, _: CallbackContext):
         data = update.callback_query.data
         idx = int(data.split(' ')[1])
         self.player_controller.select(idx)
 
-    def _playback_control_query(self, update: Update, context: CallbackContext):
+    def _playback_control_query(self, update: Update, _: CallbackContext):
         data = update.callback_query.data
         logging.info('playback_control_query: %s', data)
         command = data.split(' ')[1]
@@ -137,29 +140,19 @@ if __name__ == '__main__':
                                '%(lineno)d:\t'
                                '%(message)s')
 
-    cl = Client()
-
-
-    def get_playlist(cl: Client, url: str):
-        pl = cl.users_playlists(3, 'tchernov44le')
-
-        pass
-
-
-    url = 'https://music.yandex.ru/users/tchernov44le/playlists/3'
-    get_playlist(cl, url)
     class PCMock:
         def push(self, track_info):
             pass
 
     class BotControllerMock(BotController):
+        # noinspection PyMissingConstructor
         def __init__(self):
             self.player_controller = PCMock()
             self.client = Client()
 
     ctr = BotControllerMock()
-    ctr._process_url('https://music.yandex.com/album/4172931/track/32947997')
-    ctr._process_url('https://music.yandex.ru/users/tchernov44le/playlists/1002')
+    ctr.process_url('https://music.yandex.com/album/4172931/track/32947997')
+    ctr.process_url('https://music.yandex.ru/users/tchernov44le/playlists/1002')
     # ctr._process_url('https://music.yandex.ru/users/tchernov44le/playlists/3')
     # assert 'Ed Sheeran - Shape of You' == info[1]
     pass
