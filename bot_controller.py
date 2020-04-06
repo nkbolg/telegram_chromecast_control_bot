@@ -76,7 +76,8 @@ class BotController:
             self._add_tracks([track])
         elif xs[-2] == 'playlists':
             playlist = self.client.users_playlists(xs[6], xs[4])[0]
-            tracks = [t.track for t in playlist.tracks]
+            track_ids = [t.id for t in playlist.tracks]
+            tracks = self.client.tracks(track_ids)
             self._add_tracks(tracks)
         else:
             raise RuntimeError(f"Unparsed data: {data}")
