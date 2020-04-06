@@ -20,7 +20,7 @@ def _log(func):
 class PlayerController:
     def __init__(self):
         self.selected_cast = None
-        self.queue = []
+        self.music_list = []
         self.player_is_idle = None
         self.current_url = None
         self.current_track_duration = None
@@ -38,7 +38,7 @@ class PlayerController:
         self.selected_cast = self.cached_chromecasts[idx]
 
     def format_playlist(self):
-        return '\n'.join([t for _, t, _ in self.queue]) or "Пусто"
+        return '\n'.join([t for _, t, _ in self.music_list]) or "Пусто"
 
     def new_media_status(self, status):
         logging.debug("status_listener: %s", status)
@@ -62,16 +62,16 @@ class PlayerController:
             self.play_next()
 
     def play_next(self):
-        if len(self.queue) == 0:
+        if len(self.music_list) == 0:
             return
-        get_url, title, duration = self.queue.pop(0)
+        get_url, title, duration = self.music_list.pop(0)
         logging.info("Playing %s", title)
         self.current_url = get_url()
         self.current_track_duration = duration // 1000
         self.play_from_start(self.current_url)
 
-    def push(self, track):
-        self.queue.append(track)
+    def push(self, tracks):
+        self.music_list.append(tracks)
         if self.player_is_idle is None or self.player_is_idle is True:
             self.play_next()
 
