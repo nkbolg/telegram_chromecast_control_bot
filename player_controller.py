@@ -1,3 +1,4 @@
+from collections import namedtuple
 from random import shuffle
 from typing import List, Tuple
 
@@ -25,8 +26,7 @@ class PlayerController:
         self.selected_cast = None
         self.music_list = []
         self.player_is_idle = None
-        self.current_url = None
-        self.current_track_duration = None
+        self.current_track = None
         self.cached_chromecasts = []
 
     def update_chromecast_list(self):
@@ -41,7 +41,11 @@ class PlayerController:
         self.selected_cast = self.cached_chromecasts[idx]
 
     def format_playlist(self):
-        return '\n'.join([t for _, t, _ in self.music_list]) or "Пусто"
+        if not self.music_list:
+            return "Пусто"
+        playlist = 'Сейчас играет:\n' + self.current_track.title + '\n\nВ очереди:\n'
+        playlist += '\n'.join([t for _, t, _ in self.music_list])
+        return playlist
 
     def new_media_status(self, status):
         logging.debug("status_listener: %s", status)
@@ -60,8 +64,8 @@ class PlayerController:
         # попробовать прицепиться к media_session_id?
         # status.duration может быть None
         if self.player_is_idle \
-                and self.current_url == status.content_id \
-                and self.current_track_duration == int(status.duration):
+                and self.current_track.url == status.content_id \
+                and self.current_track.duration == int(status.duration):
             self.play_next()
 
     def play_next(self):
@@ -69,9 +73,9 @@ class PlayerController:
             return
         get_url, title, duration = self.music_list.pop(0)
         logging.info("Playing %s", title)
-        self.current_url = get_url()
-        self.current_track_duration = duration // 1000
-        self.play_from_start(self.current_url)
+        Track = namedtuple('Track', ['url', 'title', 'duration'])
+        self.current_track = Track(get_url(), title, duration // 1000)
+        self.play_from_start(self.current_track.url)
 
     def shuffle(self):
         logging.info("Shuffling playlist")
@@ -111,4 +115,4 @@ class PlayerController:
 
     @_log
     def repeat(self):
-        self.play_from_start(self.current_url)
+        self.play_from_start(self.current_track.url)
