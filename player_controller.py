@@ -30,7 +30,13 @@ class PlayerController:
         self.cached_chromecasts = []
 
     def update_chromecast_list(self):
+        # suppress regular messages on chromecast discovering
+        level = logging.getLogger('pychromecast').getEffectiveLevel()
+        logging.getLogger('pychromecast').setLevel(logging.WARNING)
+
         self.cached_chromecasts = pychromecast.get_chromecasts()
+
+        logging.getLogger('pychromecast').setLevel(level)
         for cc in self.cached_chromecasts:
             logging.debug(cc.device)
 
