@@ -38,13 +38,11 @@ class BotController:
             end_pos = msg.find('\n', near_len)
             if end_pos == -1:
                 return msg
-            return msg[:end_pos]
-
-        trimmed_txt = trim_msg(playlist_str) + '\n...'
+            return msg[:end_pos] + '\n...'
 
         chat_id = update.message.chat_id
         context.bot.send_message(chat_id=chat_id,
-                                 text=trimmed_txt)
+                                 text=trim_msg(playlist_str))
 
     @staticmethod
     def _show_controls(update: Update, context: CallbackContext):
