@@ -46,6 +46,9 @@ class PlayerController:
         assert 0 <= idx < len(self.cached_chromecasts)
         self.selected_cast = self.cached_chromecasts[idx]
 
+    def clear_playlist(self):
+        self.music_list.clear()
+
     def format_playlist(self):
         if not self.music_list:
             return "Пусто"

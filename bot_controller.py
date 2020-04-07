@@ -21,6 +21,7 @@ class BotController:
         dispatcher.add_handler(CommandHandler("device", self._select_device_callback))
         dispatcher.add_handler(CommandHandler("control", self._show_controls))
         dispatcher.add_handler(CommandHandler("playlist", self._show_playlist))
+        dispatcher.add_handler(CommandHandler("clear", self._clear_playlist))
         dispatcher.add_handler(CallbackQueryHandler(self._device_query, pattern='device.*'))
         dispatcher.add_handler(CallbackQueryHandler(self._playback_control_query, pattern='playbackControl.*'))
         dispatcher.add_handler(MessageHandler(Filters.text, self._message_callback))
@@ -30,6 +31,12 @@ class BotController:
     def _update_devices(self, _: CallbackContext):
         logging.debug("Updating chromecasts list")
         self.player_controller.update_chromecast_list()
+
+    def _clear_playlist(self, update: Update, context: CallbackContext):
+        self.player_controller.clear_playlist()
+        chat_id = update.message.chat_id
+        context.bot.send_message(chat_id=chat_id,
+                                 text="Плейлист очищен")
 
     def _show_playlist(self, update: Update, context: CallbackContext):
         playlist_str = self.player_controller.format_playlist()
