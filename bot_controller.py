@@ -33,9 +33,18 @@ class BotController:
 
     def _show_playlist(self, update: Update, context: CallbackContext):
         playlist_str = self.player_controller.format_playlist()
+
+        def trim_msg(msg: str, near_len=400):
+            end_pos = msg.find('\n', near_len)
+            if end_pos == -1:
+                return msg
+            return msg[:end_pos]
+
+        trimmed_txt = trim_msg(playlist_str) + '\n...'
+
         chat_id = update.message.chat_id
         context.bot.send_message(chat_id=chat_id,
-                                 text=playlist_str)
+                                 text=trimmed_txt)
 
     @staticmethod
     def _show_controls(update: Update, context: CallbackContext):
