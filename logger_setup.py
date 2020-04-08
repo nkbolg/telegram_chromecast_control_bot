@@ -1,37 +1,30 @@
 import logging
 import os
-
+import yaml
 from logging.handlers import RotatingFileHandler
-from os.path import exists, join
+from logging import config
 
 
-def setup_logger():
-    logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG)
-    formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+class RotatingFilePathHandler(RotatingFileHandler):
+    def __init__(self, filename, mode='a', maxBytes=0, backupCount=0, encoding=None, delay=False):
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        RotatingFileHandler.__init__(self, filename, mode, maxBytes, backupCount, encoding, delay)
 
-    # create console handler and set level to info
-    handler = logging.StreamHandler()
-    handler.setLevel(logging.INFO)
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
 
-    target_dir = 'logs'
-    if not exists(target_dir):
-        os.makedirs(target_dir)
+def setup_logging(path='logging_config.yaml', default_level=logging.INFO):
+    if os.path.exists(path):
+        with open(path) as f:
+            try:
+                log_config = yaml.safe_load(f.read())
+                logging.config.dictConfig(log_config)
+                return
+            except Exception as e:
+                print(e)
 
-    # create debug log file handler
-    handler = RotatingFileHandler(join(target_dir, "chromecast-bot-debug.log"), encoding='utf-8',
-                                  maxBytes=1024 * 1024 * 1,
-                                  backupCount=5)
-    handler.setLevel(logging.DEBUG)
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-
-    # create info log file handler
-    handler = RotatingFileHandler(join(target_dir, "chromecast-bot.log"), encoding='utf-8', maxBytes=1024 * 1024 * 1,
-                                  backupCount=5)
-    handler.setLevel(logging.INFO)
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
+    logging.basicConfig(level=default_level,
+                        format='%(filename)s: '
+                               '%(levelname)s: '
+                               '%(funcName)s(): '
+                               '%(lineno)d:\t'
+                               '%(message)s')
+    print('Failed to load configuration file. Using default configs')

@@ -1,0 +1,35 @@
+version: 1
+disable_existing_loggers: false
+
+formatters:
+    standard:
+        format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+handlers:
+    console:
+        class: logging.StreamHandler
+        level: INFO
+        formatter: standard
+        stream: ext://sys.stdout
+
+    info_file_handler:
+        class: logger_setup.RotatingFilePathHandler
+        level: INFO
+        formatter: standard
+        filename: ./logs/chromecast-bot.log
+        maxBytes: 1048576 # 1MB
+        backupCount: 5
+        encoding: utf8
+
+    debug_file_handler:
+        class: logger_setup.RotatingFilePathHandler
+        level: DEBUG
+        formatter: standard
+        filename: ./logs/chromecast-bot-debug.log
+        maxBytes: 1048576 # 1MB
+        backupCount: 5
+        encoding: utf8
+
+root:
+  level: DEBUG
+  handlers: [console, info_file_handler, debug_file_handler]
